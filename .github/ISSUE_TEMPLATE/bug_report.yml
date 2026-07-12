@@ -1,0 +1,32 @@
+name: 🐛 Bug report
+description: Something in cram didn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you run, and what went wrong?
+      placeholder: "cram . --budget 100k -o context.md → ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: cram version
+      description: Output of `cram --version` (or the npx version you ran).
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS & Node version
+      placeholder: "macOS 15 · Node 20.11"
+    validations:
+      required: true
