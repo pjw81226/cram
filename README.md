@@ -4,7 +4,6 @@
 
 **Pack your codebase into an LLM context bundle — interactively, within a token budget, keeping the files that matter.**
 
-[![npm](https://img.shields.io/npm/v/cram-cli?color=cb3837&logo=npm)](https://www.npmjs.com/package/cram-cli)
 [![CI](https://github.com/pjw81226/cram/actions/workflows/ci.yml/badge.svg)](https://github.com/pjw81226/cram/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen?logo=node.js)](https://nodejs.org)
@@ -20,10 +19,11 @@ You want to hand your repo to Claude, GPT, or Gemini — but the whole thing blo
 **cram** fixes that. Point it at a directory and it shows your repo as a live token map. Give it a budget — say `100k` tokens — and it **auto‑fits the most important files** into that budget, then hands you a clean bundle for your model. Tweak the selection by hand in the TUI, or run it headless in CI.
 
 ```bash
-npx cram-cli
+# No install, no npm account, no API key — run it straight from the repo:
+npx github:pjw81226/cram
 ```
 
-That's it — no install, no config, no API key.
+That's it. *(Prefer npm? Once it's published this shortens to `npx cram-cli`.)*
 
 ## Why cram
 
@@ -36,23 +36,24 @@ That's it — no install, no config, no API key.
 
 ## Quick start
 
-```bash
-# Interactively pack the current directory
-npx cram-cli
-
-# Auto-fit the repo to 100k tokens and write a bundle
-npx cram-cli . --budget 100k -o context.md
-
-# Pack src/ for Claude and copy straight to your clipboard
-npx cram-cli src --model claude --copy
-```
-
-Install it globally if you reach for it often:
+Run it with no install, straight from the repo:
 
 ```bash
-npm install -g cram-cli
-cram --help
+npx github:pjw81226/cram
 ```
+
+Or install the `cram` command once and call it anywhere:
+
+```bash
+git clone https://github.com/pjw81226/cram && cd cram
+npm install && npm link          # builds + puts `cram` on your PATH
+
+cram                                   # interactive TUI
+cram . --budget 100k -o context.md     # auto-fit to 100k tokens
+cram src --model claude --copy         # pack src/ for Claude → clipboard
+```
+
+> Once it's published to npm, install shortens to `npm i -g cram-cli` (the command stays `cram`), or a one‑off `npx cram-cli`.
 
 ## The interactive TUI
 
