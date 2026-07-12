@@ -5,7 +5,7 @@
 **Pack your codebase into an LLM context bundle — interactively, within a token budget, keeping the files that matter.**
 
 [![npm](https://img.shields.io/npm/v/cram-cli?color=cb3837&logo=npm)](https://www.npmjs.com/package/cram-cli)
-[![CI](https://github.com/cram-cli/cram/actions/workflows/ci.yml/badge.svg)](https://github.com/cram-cli/cram/actions/workflows/ci.yml)
+[![CI](https://github.com/pjw81226/cram/actions/workflows/ci.yml/badge.svg)](https://github.com/pjw81226/cram/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen?logo=node.js)](https://nodejs.org)
 
@@ -162,7 +162,7 @@ Each stage is a small, pure, independently‑tested module. The TUI and the head
 Issues and PRs welcome — model prices/windows drift, ignore rules can always be smarter, and more output formats are easy to add.
 
 ```bash
-git clone https://github.com/cram-cli/cram
+git clone https://github.com/pjw81226/cram
 cd cram
 npm install
 npm test        # 96 tests across the pipeline
