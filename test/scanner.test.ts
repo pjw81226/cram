@@ -7,17 +7,29 @@ import { scan } from '../src/core/scanner'
 
 const sampleDir = fileURLToPath(new URL('./fixtures/sample', import.meta.url))
 const gitDir = path.join(sampleDir, '.git')
+const secretFile = path.join(sampleDir, 'secret.txt')
+const nodeModulesDir = path.join(sampleDir, 'node_modules')
+const leftpadFile = path.join(nodeModulesDir, 'leftpad', 'index.js')
 
-// The `.git` directory can't be committed as a fixture (git refuses to track a
-// nested .git), so we materialize it at runtime to prove it gets excluded.
+// Some fixture files can't be committed (git refuses a nested `.git`, and both
+// `secret.txt` and `node_modules/` are shadowed by .gitignore rules), so we
+// materialize them at runtime. This keeps the test hermetic — it passes on a
+// fresh clone/CI, not just on the machine that first created the fixture.
 beforeAll(async () => {
   await fs.mkdir(gitDir, { recursive: true })
   await fs.writeFile(path.join(gitDir, 'HEAD'), 'ref: refs/heads/main\n')
   await fs.writeFile(path.join(gitDir, 'config'), '[core]\n\tbare = false\n')
+
+  await fs.writeFile(secretFile, 'API_KEY=do-not-pack-me\n')
+
+  await fs.mkdir(path.join(nodeModulesDir, 'leftpad'), { recursive: true })
+  await fs.writeFile(leftpadFile, 'module.exports = (s, n) => s.padStart(n)\n')
 })
 
 afterAll(async () => {
   await fs.rm(gitDir, { recursive: true, force: true })
+  await fs.rm(secretFile, { force: true })
+  await fs.rm(nodeModulesDir, { recursive: true, force: true })
 })
 
 describe('scan (defaults)', () => {
