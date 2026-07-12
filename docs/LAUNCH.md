@@ -20,6 +20,18 @@ Timing: post **Tuesday–Thursday, ~8–10am US Eastern** for the widest overlap
 
 ---
 
+## 0.5. One‑click submit links (pre‑filled)
+
+Log into each site in your browser first, then click — the title + repo URL are pre‑filled. Review and submit.
+
+- **Show HN** — [submit (pre‑filled) →](https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fgithub.com%2Fpjw81226%2Fcram&t=Show%20HN%3A%20Cram%20%E2%80%93%20Interactively%20pack%20your%20codebase%20into%20an%20LLM%20token%20budget) — then immediately paste the **First comment** from §1.
+- **r/LocalLLaMA** — [submit (pre‑filled) →](https://www.reddit.com/r/LocalLLaMA/submit?title=I%20built%20a%20CLI%20that%20fits%20your%20codebase%20into%20a%20token%20budget%20for%20local%20models%20(npx%2C%20no%20API%20key)&url=https%3A%2F%2Fgithub.com%2Fpjw81226%2Fcram)
+- **r/commandline** — [submit (pre‑filled) →](https://www.reddit.com/r/commandline/submit?title=cram%20%E2%80%93%20a%20TUI%20that%20packs%20your%20codebase%20into%20an%20LLM%20token%20budget&url=https%3A%2F%2Fgithub.com%2Fpjw81226%2Fcram) — attach/link the demo GIF.
+- **X / Twitter** — [tweet (pre‑filled) →](https://twitter.com/intent/tweet?text=Feeding%20a%20whole%20repo%20to%20an%20LLM%20never%20fits%20the%20context%20window.%0A%0ASo%20I%20built%20cram%20%E2%80%94%20it%20packs%20your%20codebase%20into%20a%20token%20budget%2C%20keeping%20the%20files%20that%20matter.%0A%0Anpx%20cram-cli%0A%0Ahttps%3A%2F%2Fgithub.com%2Fpjw81226%2Fcram) — then reply with tweets 2–4 (§3) and attach `assets/demo.gif`.
+- **GeekNews (긱뉴스)** — [new post →](https://news.hada.io/new) (no pre‑fill; paste the Korean draft from §4).
+
+---
+
 ## 1. Show HN
 
 **Title** (keep it under 80 chars, no hype words):
