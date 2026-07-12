@@ -1,0 +1,56 @@
+{
+  "name": "cram-cli",
+  "version": "0.1.0",
+  "description": "Interactively pack your codebase into an LLM context bundle — within a token budget, keeping the files that matter.",
+  "keywords": [
+    "llm",
+    "ai",
+    "gpt",
+    "claude",
+    "context",
+    "tokens",
+    "tokenizer",
+    "codebase",
+    "prompt",
+    "repomix",
+    "cli",
+    "tui",
+    "ink"
+  ],
+  "type": "module",
+  "bin": {
+    "cram": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "clipboardy": "^4.0.0",
+    "gpt-tokenizer": "^2.5.0",
+    "ignore": "^5.3.1",
+    "ink": "^5.0.1",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.3",
+    "ink-testing-library": "^4.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.0"
+  }
+}
