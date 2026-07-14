@@ -5,6 +5,8 @@ export interface StatusBarProps {
   searching: boolean
   filter: string
   status?: string
+  /** Why the ranker scored the file under the cursor as it did; '' for directories. */
+  why?: string
 }
 
 interface KeyHint {
@@ -44,8 +46,8 @@ function Legend({ hints }: { hints: KeyHint[] }) {
   )
 }
 
-/** Bottom bar: transient status message + a two-line key legend, or the search prompt. */
-export function StatusBar({ searching, filter, status }: StatusBarProps) {
+/** Bottom bar: status message + the cursor's ranking reasons + a two-line key legend. */
+export function StatusBar({ searching, filter, status, why }: StatusBarProps) {
   return (
     <Box flexDirection="column" paddingX={1} marginTop={1}>
       {status ? (
@@ -53,6 +55,12 @@ export function StatusBar({ searching, filter, status }: StatusBarProps) {
           {status}
         </Text>
       ) : null}
+      {/* Holds its line even on a directory row (a space, so Ink can't collapse it),
+          otherwise the legend below would jump up and down as the cursor moves. */}
+      <Text wrap="truncate-end">
+        {why ? <Text color="yellow">why </Text> : null}
+        <Text dimColor>{why || ' '}</Text>
+      </Text>
       {searching ? (
         <Text>
           <Text color="yellow">search: </Text>

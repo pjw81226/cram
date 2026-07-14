@@ -9,6 +9,7 @@ import { rank } from '../core/ranker'
 import { select } from '../core/selector'
 import { format } from '../core/formatter'
 import { resolveModel, estimateCost, MODELS } from '../core/models'
+import { reasonSummary } from '../core/explain'
 import type { OutputFormat, RankedFile, Selection } from '../core/types'
 import { buildTree, flatten, collectFiles, type TreeNode } from './tree-model'
 import { BudgetBar } from './BudgetBar'
@@ -97,6 +98,13 @@ export function App(props: AppProps) {
     [files, included],
   )
 
+  // Why the ranker scored the row under the cursor as it did. Files only — a
+  // directory has no score of its own, so the line goes blank.
+  const why = useMemo(() => {
+    const file = rows[cursor]?.node.file
+    return file ? `${file.score.toFixed(2)} · ${reasonSummary(file)}` : ''
+  }, [rows, cursor])
+
   const model = resolveModel(modelId)
   const cost = estimateCost(used, model)
   const rootTokens = tree?.tokens ?? 0
@@ -106,8 +114,8 @@ export function App(props: AppProps) {
     if (cursor > rows.length - 1) setCursor(Math.max(0, rows.length - 1))
   }, [rows.length, cursor])
 
-  // Viewport window (derived; header + status reserve ~9 lines).
-  const listHeight = Math.max(4, (stdout?.rows ?? 24) - 9)
+  // Viewport window (derived; header + why line + status reserve ~10 lines).
+  const listHeight = Math.max(4, (stdout?.rows ?? 24) - 10)
   {
     let offset = offsetRef.current
     if (cursor < offset) offset = cursor
@@ -304,7 +312,7 @@ export function App(props: AppProps) {
         expanded={expanded}
         rootTokens={rootTokens}
       />
-      <StatusBar searching={searching} filter={filter} status={status} />
+      <StatusBar searching={searching} filter={filter} status={status} why={why} />
     </Box>
   )
 }

@@ -30,6 +30,7 @@ That's it — no install, no config, no API key.
 - 🎛️ **Interactive TUI** — browse your repo as a tree with a live token bar per file and a budget gauge up top. Toggle files with <kbd>space</kbd> and watch the gauge react.
 - 🎯 **Budget auto‑fit** — `--budget 100k` (or a model preset) and cram greedily packs the highest‑value files until the budget is full. It never goes over.
 - 🧠 **Smart ranking** — cram keeps the files that matter. Source over tests, entry points over fixtures, recently‑touched over stale, README + manifest always anchored. Not just "biggest first."
+- 🔍 **Shows its work** — `--explain` prints why every file was kept or dropped, and the TUI shows the same reasons for the file under the cursor. No black box.
 - 🔌 **Local & instant** — tokenization runs locally (OpenAI `o200k`/`cl100k`). No API key, no upload, works offline. One `npx` and you're in.
 - 📤 **Three formats** — Markdown, Claude‑optimized **XML**, or plain text — each with a file tree and token summary header.
 - 🧵 **Headless mode** — pipe it, write a file, or copy to clipboard. Perfect for scripts and CI.
@@ -75,6 +76,8 @@ Run `cram` in a terminal with no output flags and you get the packer:
 
 The gauge turns **green → yellow → red** as you approach and exceed the budget. Manual selections are yours to keep; <kbd>a</kbd> re‑fits automatically.
 
+Move the cursor onto a file and the bottom bar tells you how the ranker saw it — its score and the signals behind it, e.g. `why 0.84 · in source dir · entry point · code`.
+
 ## Headless / CLI
 
 When stdout isn't a TTY (piped), or you pass `-o`/`-c`/`--stdout`, cram runs headless: scan → rank → fit → emit.
@@ -92,6 +95,7 @@ cram [dir] [options]
 | `-c, --copy` | Copy the bundle to the clipboard. |
 | `--stdout` | Force the bundle to stdout. |
 | `--focus <text>` | Bias ranking toward a task, e.g. `--focus "auth flow"`. |
+| `--explain` | Print why each file was kept or dropped. |
 | `--ignore <glob>` | Extra ignore glob (repeatable). |
 | `--all` | Include files normally ignored by default. |
 | `--no-gitignore` | Don't honor `.gitignore`. |
@@ -122,6 +126,30 @@ When the whole repo won't fit, cram decides what to keep with a deterministic im
 - **Focus** — `--focus "…"` boosts files whose path/content match your task.
 
 Then the selector fills your budget **first‑fit by importance**: it takes the most important files that fit and skips (without stopping at) any single file too large for the remaining room. The result is guaranteed to stay within budget.
+
+### Seeing why
+
+Ranking is never a black box — ask cram to show its work:
+
+```bash
+cram . --budget 6k --explain
+```
+
+```text
+Why these files — 12/47 files · 6.0k / 6k tokens
+
+included (12)
+  1.00  package.json           409  config/manifest · anchor · shallow path
+  0.93  README.md             2.2k  anchor · shallow path
+  0.84  src/cli.tsx           1.6k  in source dir · entry point · code
+
+excluded (35)
+  0.82  src/tui/App.tsx       2.9k  over budget · in source dir · entry point · recently modified · code
+  0.00  assets/logo.png          0  no text content
+  … and 25 more
+```
+
+On its own, `--explain` prints just the report. Combined with `-o`/`-c`/`--stdout` it keeps out of the bundle's way: the report goes to stderr whenever the bundle is on stdout, so pipes stay clean.
 
 ## Models & token counting
 

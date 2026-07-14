@@ -3,6 +3,17 @@
 All notable changes to **cram** are documented here. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/), and the project aims for [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`--explain`** — print why each file was kept or dropped: score, tokens, and the ranking
+  signals behind it (`in source dir · entry point · code`), plus the reason files fell out
+  (`over budget`, `no text content`). On its own it prints just the report; alongside
+  `-o`/`-c`/`--stdout` it stays off the bundle's stream so pipes stay clean. ([#1](https://github.com/pjw81226/cram/issues/1))
+- **Ranking reasons in the TUI** — the bottom bar now shows the score and reasons for the
+  file under the cursor.
+
 ## [0.1.0] — 2026-07-12
 
 Initial release.

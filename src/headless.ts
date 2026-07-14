@@ -4,7 +4,7 @@ import { rank } from './core/ranker'
 import { select } from './core/selector'
 import { format } from './core/formatter'
 import { resolveModel, estimateCost } from './core/models'
-import type { OutputFormat } from './core/types'
+import type { OutputFormat, Selection } from './core/types'
 
 export interface HeadlessOptions {
   root: string
@@ -28,6 +28,8 @@ export interface HeadlessResult {
   cost?: number
   modelLabel: string
   approximate: boolean
+  /** The ranked in/out split behind `output` — carries per-file scores + reasons. */
+  selection: Selection
 }
 
 /**
@@ -60,5 +62,6 @@ export async function runHeadless(opts: HeadlessOptions): Promise<HeadlessResult
     cost: estimateCost(selection.totalTokens, model),
     modelLabel: model.label,
     approximate: Boolean(model.approximate),
+    selection,
   }
 }

@@ -126,4 +126,11 @@ export interface Config {
  *       selection: Selection,
  *       opts: { format: OutputFormat; root: string; model: ModelSpec }
  *     ): string
+ *
+ *   explain.ts
+ *     export function reasonSummary(file: RankedFile): string   // TUI "why" line
+ *     export function explainReport(
+ *       selection: Selection,
+ *       opts?: { maxExcluded?: number }
+ *     ): string                                                 // --explain report
  * ------------------------------------------------------------------ */

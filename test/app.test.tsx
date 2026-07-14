@@ -28,6 +28,25 @@ describe('TUI App (smoke)', () => {
     unmount()
   })
 
+  it('shows why the ranker scored the file under the cursor', async () => {
+    const { lastFrame, stdin, unmount } = render(
+      <App root={root} modelId="gpt-4o" format="markdown" initialBudget={5000} />,
+    )
+    await waitForFrame(lastFrame, /files/)
+
+    // The top row is a directory (no score of its own); walk down onto a file.
+    let frame = lastFrame() ?? ''
+    for (let i = 0; i < 6 && !/why /.test(frame); i++) {
+      stdin.write('j')
+      await tick()
+      frame = lastFrame() ?? ''
+    }
+
+    expect(frame).toMatch(/why /)
+    expect(frame).toMatch(/in source dir|code|anchor|recently modified|shallow path/)
+    unmount()
+  })
+
   it('accepts keypresses (auto-fit, format, budget, toggle, search) without crashing', async () => {
     const { lastFrame, stdin, unmount } = render(
       <App root={root} modelId="gpt-4o" format="markdown" initialBudget={5000} />,
