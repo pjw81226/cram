@@ -8,6 +8,7 @@ import { App } from './tui/App'
 import { runHeadless } from './headless'
 import { resolveModel, DEFAULT_MODEL, MODELS } from './core/models'
 import { explainReport } from './core/explain'
+import { loadConfig } from './core/config'
 import { parseBudget, formatTokens, formatCost } from './util'
 import type { OutputFormat } from './core/types'
 
@@ -17,15 +18,16 @@ const cli = cac('cram')
 
 cli
   .command('[dir]', 'Pack a codebase into an LLM context bundle')
-  .option('-m, --model <id>', 'Target model: gpt-4o, claude, o1, gemini …', { default: DEFAULT_MODEL })
+  .option('-m, --model <id>', 'Target model: gpt-4o, claude, o1, gemini … (default: gpt-4o)')
   .option('-b, --budget <tokens>', 'Token budget, e.g. 100k or 1.5m (default: model context)')
-  .option('-f, --format <fmt>', 'Output format: markdown | xml | plain', { default: 'markdown' })
+  .option('-f, --format <fmt>', 'Output format: markdown | xml | plain (default: markdown)')
   .option('-o, --output <file>', 'Write the bundle to a file')
   .option('-c, --copy', 'Copy the bundle to the clipboard')
   .option('--stdout', 'Force writing the bundle to stdout')
   .option('--focus <text>', 'Bias ranking toward a task description')
   .option('--explain', 'Print why each file was kept or dropped')
   .option('--ignore <glob>', 'Extra ignore glob (repeatable)')
+  .option('--include <glob>', 'Always-include glob — pin files, even over budget (repeatable)')
   .option('--all', 'Include files normally ignored by default')
   .option('--no-gitignore', 'Do not honor .gitignore files')
   .option('-i, --interactive', 'Force the interactive TUI')
@@ -34,6 +36,7 @@ cli
   .example('  $ cram . -b 100k -o ctx.md   # auto-fit to 100k tokens, write a file')
   .example('  $ cram src --model claude -c # pack src/ for Claude, copy to clipboard')
   .example('  $ cram . -b 50k --explain    # show why each file was kept or dropped')
+  .example('  $ cram . -b 20k --include README.md  # always keep README, even over budget')
   .action(async (dir: string | undefined, options: Record<string, unknown>) => {
     if (options.listModels) {
       listModels()
@@ -41,23 +44,29 @@ cli
     }
 
     const root = path.resolve(process.cwd(), dir ?? '.')
-    const format = normalizeFormat(String(options.format ?? 'markdown'))
+    // Per-repo config fills in anything not passed on the command line.
+    const config = loadConfig(root)
+
+    const format = normalizeFormat(String(options.format ?? config.format ?? 'markdown'))
+    const focus = (options.focus as string | undefined) ?? config.focus
 
     let budget: number | undefined
-    if (options.budget !== undefined) {
-      budget = parseBudget(options.budget as string)
-      if (budget === undefined) return fail(`Invalid budget "${String(options.budget)}". Try 100k, 1.5m, or a number.`)
+    const budgetInput = options.budget ?? config.budget
+    if (budgetInput !== undefined) {
+      budget = parseBudget(budgetInput as string | number)
+      if (budget === undefined) return fail(`Invalid budget "${String(budgetInput)}". Try 100k, 1.5m, or a number.`)
     }
 
     let model
     try {
-      model = resolveModel(String(options.model ?? DEFAULT_MODEL))
+      model = resolveModel(String(options.model ?? config.model ?? DEFAULT_MODEL))
     } catch (err) {
       return fail(err instanceof Error ? err.message : String(err))
     }
 
+    const include = mergeGlobs(options.include, config.include)
     const scanOptions = {
-      ignore: toArray(options.ignore),
+      ignore: mergeGlobs(options.ignore, config.ignore),
       includeDefaultIgnored: Boolean(options.all),
       respectGitignore: options.gitignore !== false,
     }
@@ -75,7 +84,8 @@ cli
           modelId={model.id}
           initialBudget={budget}
           format={format}
-          focus={options.focus as string | undefined}
+          focus={focus}
+          include={include}
           outputPath={options.output as string | undefined}
           scanOptions={scanOptions}
         />,
@@ -84,7 +94,7 @@ cli
       return
     }
 
-    const result = await runHeadless({ root, model: model.id, budget, format, focus: options.focus as string | undefined, ...scanOptions })
+    const result = await runHeadless({ root, model: model.id, budget, format, focus, include, ...scanOptions })
 
     let wroteSomewhere = false
     if (options.output) {
@@ -111,6 +121,15 @@ cli
       // Wherever the bundle goes, keep the report off the same stream.
       const stream = bundleToStdout ? process.stderr : process.stdout
       stream.write(explainReport(result.selection))
+    }
+
+    if (include && include.length > 0 && result.pinnedCount === 0) {
+      process.stderr.write('cram: --include matched no files\n')
+    }
+    if (result.overBudget > 0) {
+      process.stderr.write(
+        `cram: pinned files exceed the budget by ${formatTokens(result.overBudget)} tokens\n`,
+      )
     }
 
     const stats =
@@ -143,6 +162,12 @@ function normalizeFormat(f: string): OutputFormat {
 function toArray(v: unknown): string[] | undefined {
   if (v === undefined || v === null) return undefined
   return Array.isArray(v) ? v.map(String) : [String(v)]
+}
+
+/** Combine repeatable CLI globs with config globs; undefined when empty. */
+function mergeGlobs(cli: unknown, config: string[] | undefined): string[] | undefined {
+  const merged = [...(toArray(cli) ?? []), ...(config ?? [])]
+  return merged.length > 0 ? merged : undefined
 }
 
 function listModels(): void {

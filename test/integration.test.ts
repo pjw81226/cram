@@ -44,4 +44,23 @@ describe('headless pipeline (integration)', () => {
     expect(report).toContain('src/index.ts')
     expect(report).toContain('in source dir')
   })
+
+  it('pins an --include file even past a tiny budget, and reports over-budget', async () => {
+    const res = await runHeadless({ root, model: 'gpt-4o', budget: 1, format: 'markdown', include: ['README.md'] })
+    expect(res.output).toContain('README.md')
+    expect(res.pinnedCount).toBeGreaterThan(0)
+    expect(res.overBudget).toBeGreaterThan(0)
+    expect(res.selection.included.some((f) => f.pinned && f.path === 'README.md')).toBe(true)
+  })
+
+  it('leaves the budget alone when a pin comfortably fits', async () => {
+    const res = await runHeadless({ root, model: 'gpt-4o', budget: 200000, format: 'markdown', include: ['README.md'] })
+    expect(res.pinnedCount).toBeGreaterThan(0)
+    expect(res.overBudget).toBe(0)
+  })
+
+  it('reports zero pins when --include matches nothing', async () => {
+    const res = await runHeadless({ root, model: 'gpt-4o', budget: 5000, format: 'markdown', include: ['does/not/exist/*.zzz'] })
+    expect(res.pinnedCount).toBe(0)
+  })
 })

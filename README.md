@@ -97,6 +97,7 @@ cram [dir] [options]
 | `--focus <text>` | Bias ranking toward a task, e.g. `--focus "auth flow"`. |
 | `--explain` | Print why each file was kept or dropped. |
 | `--ignore <glob>` | Extra ignore glob (repeatable). |
+| `--include <glob>` | Always‑include glob — pin files, kept even over budget (repeatable). |
 | `--all` | Include files normally ignored by default. |
 | `--no-gitignore` | Don't honor `.gitignore`. |
 | `-i, --interactive` | Force the TUI. |
@@ -115,6 +116,31 @@ cram . --model claude --budget 150k --format xml -o context.xml
 
 Stats print to **stderr**, so stdout stays clean for piping.
 
+## Config & pinning
+
+**Pin must‑include files.** `--include` forces files into the bundle no matter what — they survive budget trimming even if they push you over. Handy for the entry point or the one file you always want in context:
+
+```bash
+cram . --budget 80k --include "src/index.ts" --include "src/api/**"
+```
+
+Pinned files are always kept; if they alone exceed the budget, cram includes them anyway and prints a heads‑up (`pinned files exceed the budget by …`). In the TUI they're marked with a `◆`.
+
+**Per‑repo config.** Drop a `.cramrc` (or `cram.json`) in your repo to set defaults — any CLI flag overrides it:
+
+```json
+{
+  "model": "claude",
+  "budget": "150k",
+  "format": "xml",
+  "focus": "payment flow",
+  "ignore": ["*.generated.ts"],
+  "include": ["README.md", "src/index.ts"]
+}
+```
+
+Now a bare `cram .` uses those settings, and `cram . --model gpt-4o` overrides just the model.
+
 ## How ranking works
 
 When the whole repo won't fit, cram decides what to keep with a deterministic importance score per file:
@@ -125,7 +151,7 @@ When the whole repo won't fit, cram decides what to keep with a deterministic im
 - **Shape** — shallower paths and real code beat deep, generated, or data files.
 - **Focus** — `--focus "…"` boosts files whose path/content match your task.
 
-Then the selector fills your budget **first‑fit by importance**: it takes the most important files that fit and skips (without stopping at) any single file too large for the remaining room. The result is guaranteed to stay within budget.
+Then the selector fills your budget **first‑fit by importance**: it takes the most important files that fit and skips (without stopping at) any single file too large for the remaining room. The result stays within budget — unless you **pin** files (see [Config & pinning](#config--pinning)), which always win.
 
 ### Seeing why
 

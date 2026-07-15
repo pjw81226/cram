@@ -58,6 +58,7 @@ export function Tree({ rows, cursor, offset, height, includedPaths, expanded, ro
 
         const name = node.isDir ? node.name + '/' : node.name
         const nameColor = isCursor ? 'cyanBright' : node.isDir ? 'blue' : included ? undefined : 'gray'
+        const pinned = !node.isDir && Boolean(node.file?.pinned)
 
         return (
           <Box key={node.path || String(idx)}>
@@ -66,6 +67,7 @@ export function Tree({ rows, cursor, offset, height, includedPaths, expanded, ro
               {indent}
               {marker} {checkbox}{' '}
             </Text>
+            <Text color="yellow">{pinned ? '◆ ' : '  '}</Text>
             <Text bold={isCursor} color={nameColor} wrap="truncate-end">
               {name}
             </Text>

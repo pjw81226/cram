@@ -90,3 +90,43 @@ describe('select', () => {
     }
   })
 })
+
+describe('select with pins', () => {
+  const pin = (file: RankedFile): RankedFile => ({ ...file, pinned: true })
+
+  it('force-includes a pinned file even when it exceeds the budget', () => {
+    const sel = select([pin(rf('big', 0.1, 1000)), rf('small', 0.9, 100)], 300)
+    expect(sel.included.map((f) => f.path)).toContain('big')
+    expect(sel.totalTokens).toBeGreaterThan(300)
+  })
+
+  it('includes pins first, then fills the remaining budget by importance', () => {
+    const files = [
+      pin(rf('pinned', 0.1, 200)),
+      rf('hi', 0.9, 200),
+      rf('mid', 0.5, 200),
+      rf('lo', 0.2, 200),
+    ]
+    const sel = select(files, 500) // pinned(200) + room 300 -> hi(200) fits, mid/lo don't
+    expect(sel.included.map((f) => f.path).sort()).toEqual(['hi', 'pinned'])
+    expect(sel.totalTokens).toBe(400)
+  })
+
+  it('includes every pin even when the pins together exceed the budget', () => {
+    const sel = select([pin(rf('p1', 0.1, 400)), pin(rf('p2', 0.2, 400)), rf('x', 0.9, 100)], 300)
+    expect(sel.included.map((f) => f.path).sort()).toEqual(['p1', 'p2'])
+    expect(sel.totalTokens).toBe(800)
+  })
+
+  it('still excludes a pinned file with no text content', () => {
+    const sel = select([pin(rf('empty', 0.9, 0)), rf('real', 0.5, 100)], 1000)
+    expect(sel.included.map((f) => f.path)).toEqual(['real'])
+    expect(sel.excluded.map((f) => f.path)).toContain('empty')
+  })
+
+  it('keeps included sorted by score desc even with a low-score pin', () => {
+    const sel = select([pin(rf('plow', 0.1, 100)), rf('hi', 0.9, 100), rf('mid', 0.5, 100)], 1000)
+    const scores = sel.included.map((f) => f.score)
+    expect(scores).toEqual([...scores].sort((a, b) => b - a))
+  })
+})

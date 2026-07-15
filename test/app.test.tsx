@@ -61,4 +61,13 @@ describe('TUI App (smoke)', () => {
     expect(frame.length).toBeGreaterThan(0)
     unmount()
   })
+
+  it('marks pinned files from include with a pin glyph', async () => {
+    const { lastFrame, unmount } = render(
+      <App root={root} modelId="gpt-4o" format="markdown" initialBudget={5000} include={['README.md']} />,
+    )
+    await waitForFrame(lastFrame, /files/)
+    expect(lastFrame() ?? '').toContain('◆')
+    unmount()
+  })
 })

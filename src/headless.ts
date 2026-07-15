@@ -4,6 +4,7 @@ import { rank } from './core/ranker'
 import { select } from './core/selector'
 import { format } from './core/formatter'
 import { resolveModel, estimateCost } from './core/models'
+import { applyIncludePins } from './core/config'
 import type { OutputFormat, Selection } from './core/types'
 
 export interface HeadlessOptions {
@@ -14,6 +15,8 @@ export interface HeadlessOptions {
   format: OutputFormat
   focus?: string
   ignore?: string[]
+  /** Must-include globs — matching files are pinned (kept even over budget). */
+  include?: string[]
   includeDefaultIgnored?: boolean
   respectGitignore?: boolean
 }
@@ -30,6 +33,10 @@ export interface HeadlessResult {
   approximate: boolean
   /** The ranked in/out split behind `output` — carries per-file scores + reasons. */
   selection: Selection
+  /** How many files were pinned via `include`. */
+  pinnedCount: number
+  /** Tokens the selection runs over budget by (only possible via pins); 0 otherwise. */
+  overBudget: number
 }
 
 /**
@@ -49,6 +56,7 @@ export async function runHeadless(opts: HeadlessOptions): Promise<HeadlessResult
   tokenizeFiles(files, model.encoding)
 
   const ranked = rank(files, { focus: opts.focus, root: opts.root })
+  const pinnedCount = applyIncludePins(ranked, opts.include)
   const selection = select(ranked, budget)
   const output = format(selection, { format: opts.format, root: opts.root, model })
 
@@ -63,5 +71,7 @@ export async function runHeadless(opts: HeadlessOptions): Promise<HeadlessResult
     modelLabel: model.label,
     approximate: Boolean(model.approximate),
     selection,
+    pinnedCount,
+    overBudget: Math.max(0, selection.totalTokens - budget),
   }
 }
