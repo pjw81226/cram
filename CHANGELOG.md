@@ -13,6 +13,11 @@ All notable changes to **cram** are documented here. The format loosely follows
   `-o`/`-c`/`--stdout` it stays off the bundle's stream so pipes stay clean. ([#1](https://github.com/pjw81226/cram/issues/1))
 - **Ranking reasons in the TUI** — the bottom bar now shows the score and reasons for the
   file under the cursor.
+- **`--include` / must-include pins** — force files into the bundle with a glob; pinned files
+  are kept even when they push past the budget (cram warns `pinned files exceed the budget by …`),
+  and the TUI marks them with a `◆`. ([#2](https://github.com/pjw81226/cram/issues/2))
+- **Per-repo config** — a `.cramrc` / `cram.json` can set `model`, `budget`, `format`, `focus`,
+  `ignore`, and `include` defaults; any CLI flag overrides the config.
 
 ## [0.1.0] — 2026-07-12
 
