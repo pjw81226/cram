@@ -7,6 +7,7 @@ import clipboard from 'clipboardy'
 import { App } from './tui/App'
 import { runHeadless } from './headless'
 import { resolveModel, DEFAULT_MODEL, MODELS } from './core/models'
+import { explainReport } from './core/explain'
 import { parseBudget, formatTokens, formatCost } from './util'
 import type { OutputFormat } from './core/types'
 
@@ -23,6 +24,7 @@ cli
   .option('-c, --copy', 'Copy the bundle to the clipboard')
   .option('--stdout', 'Force writing the bundle to stdout')
   .option('--focus <text>', 'Bias ranking toward a task description')
+  .option('--explain', 'Print why each file was kept or dropped')
   .option('--ignore <glob>', 'Extra ignore glob (repeatable)')
   .option('--all', 'Include files normally ignored by default')
   .option('--no-gitignore', 'Do not honor .gitignore files')
@@ -31,6 +33,7 @@ cli
   .example('  $ cram                       # interactively pack the current directory')
   .example('  $ cram . -b 100k -o ctx.md   # auto-fit to 100k tokens, write a file')
   .example('  $ cram src --model claude -c # pack src/ for Claude, copy to clipboard')
+  .example('  $ cram . -b 50k --explain    # show why each file was kept or dropped')
   .action(async (dir: string | undefined, options: Record<string, unknown>) => {
     if (options.listModels) {
       listModels()
@@ -59,9 +62,11 @@ cli
       respectGitignore: options.gitignore !== false,
     }
 
+    const explain = Boolean(options.explain)
     const wantsFileOutput = Boolean(options.output || options.copy || options.stdout)
     const isTTY = Boolean(process.stdout.isTTY && process.stdin.isTTY)
-    const interactive = Boolean(options.interactive) || (isTTY && !wantsFileOutput)
+    // --explain asks for a report, not a session, so it stays headless unless -i is explicit.
+    const interactive = Boolean(options.interactive) || (isTTY && !wantsFileOutput && !explain)
 
     if (interactive) {
       const { waitUntilExit } = render(
@@ -96,8 +101,16 @@ cli
         process.stderr.write('Clipboard unavailable in this environment\n')
       }
     }
-    if (options.stdout || !wroteSomewhere) {
+    // An --explain run with no output flag wants the report, not the bundle.
+    const bundleToStdout = Boolean(options.stdout) || (!wroteSomewhere && !explain)
+    if (bundleToStdout) {
       process.stdout.write(result.output)
+    }
+
+    if (explain) {
+      // Wherever the bundle goes, keep the report off the same stream.
+      const stream = bundleToStdout ? process.stderr : process.stdout
+      stream.write(explainReport(result.selection))
     }
 
     const stats =

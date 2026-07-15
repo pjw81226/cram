@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fileURLToPath } from 'node:url'
 import { runHeadless } from '../src/headless'
+import { explainReport } from '../src/core/explain'
 
 const root = fileURLToPath(new URL('./fixtures/sample', import.meta.url))
 
@@ -32,5 +33,15 @@ describe('headless pipeline (integration)', () => {
   it('defaults the budget to the model context window', async () => {
     const res = await runHeadless({ root, model: 'claude', format: 'markdown' })
     expect(res.budget).toBe(200000)
+  })
+
+  it('exposes the selection so callers can explain it', async () => {
+    const res = await runHeadless({ root, model: 'gpt-4o', budget: 5000, format: 'markdown' })
+    const report = explainReport(res.selection)
+
+    expect(res.selection.included.length).toBe(res.includedCount)
+    expect(res.selection.included.every((f) => f.reasons.length > 0)).toBe(true)
+    expect(report).toContain('src/index.ts')
+    expect(report).toContain('in source dir')
   })
 })
