@@ -10,6 +10,7 @@ import { select } from '../core/selector'
 import { format } from '../core/formatter'
 import { resolveModel, estimateCost, MODELS } from '../core/models'
 import { reasonSummary } from '../core/explain'
+import { applyIncludePins } from '../core/config'
 import type { OutputFormat, RankedFile, Selection } from '../core/types'
 import { buildTree, flatten, collectFiles, type TreeNode } from './tree-model'
 import { BudgetBar } from './BudgetBar'
@@ -27,6 +28,7 @@ export interface AppProps {
   initialBudget?: number
   format: OutputFormat
   focus?: string
+  include?: string[]
   outputPath?: string
   scanOptions?: {
     ignore?: string[]
@@ -67,6 +69,7 @@ export function App(props: AppProps) {
         const scanned = await scan({ root: props.root, ...props.scanOptions })
         tokenizeFiles(scanned, model.encoding)
         const ranked = rank(scanned, { focus: props.focus, root: props.root })
+        applyIncludePins(ranked, props.include)
         if (cancelled) return
         const t = buildTree(ranked)
         const topDirs = new Set(t.children.filter((c) => c.isDir).map((c) => c.path))
