@@ -35,6 +35,24 @@ export interface RankedFile extends FileRecord {
   score: number
   /** Short human-readable reasons behind the score (for TUI / --explain). */
   reasons: string[]
+  /** Force-included via a pin (`--include` / config). Bypasses the budget. */
+  pinned?: boolean
+}
+
+/**
+ * Per-repo configuration loaded from `.cramrc` or `cram.json`. Every field is
+ * optional; a matching CLI flag always overrides the config value.
+ */
+export interface CramConfig {
+  model?: string
+  /** Token budget, as a number or a human string like "100k". */
+  budget?: string | number
+  format?: string
+  focus?: string
+  /** Extra ignore globs. */
+  ignore?: string[]
+  /** Must-include globs — matching files are pinned (always kept). */
+  include?: string[]
 }
 
 /** The chosen subset under a budget. Produced by the selector. */
@@ -43,7 +61,7 @@ export interface Selection {
   included: RankedFile[]
   /** Files left out. */
   excluded: RankedFile[]
-  /** Sum of `tokens` across `included`. Guaranteed <= budget (unless budget is 0). */
+  /** Sum of `tokens` across `included`. <= budget, unless pinned files alone exceed it. */
   totalTokens: number
   /** The token budget this selection was computed against. */
   budget: number
