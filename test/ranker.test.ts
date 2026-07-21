@@ -136,3 +136,56 @@ describe('rank', () => {
     expect(input[0]!).not.toHaveProperty('score')
   })
 })
+
+describe('rank (pins)', () => {
+  it('scores a pinned file 1 and leads with it, however low it would rank', () => {
+    const r = rank([
+      f({ path: 'src/index.ts', lang: 'ts', content: 'export const a = 1' }),
+      f({ path: 'README.md', lang: 'md', content: '# docs' }),
+      // Everything about this file says "drop me" — except the pin.
+      f({ path: 'test/fixtures/deep/junk.min.js', lang: 'js', content: 'x', pinned: true }),
+    ])
+
+    expect(r[0]!.path).toBe('test/fixtures/deep/junk.min.js')
+    expect(r[0]!.score).toBe(1)
+    expect(r[0]!.reasons[0]).toBe('pinned')
+  })
+
+  it('keeps the ranker signals as secondary reasons', () => {
+    const r = rank([f({ path: 'src/index.ts', lang: 'ts', content: 'x', pinned: true })])
+
+    expect(r[0]!.reasons).toContain('pinned')
+    expect(r[0]!.reasons).toContain('in source dir')
+  })
+
+  it('leads over an anchor that also tops out at 1', () => {
+    const r = rank([
+      f({ path: 'README.md', lang: 'md', content: '# docs' }),
+      f({ path: 'package.json', lang: 'json', content: '{}' }),
+      f({ path: 'src/pinned.ts', lang: 'ts', content: 'x', pinned: true }),
+    ])
+
+    expect(r[0]!.path).toBe('src/pinned.ts')
+  })
+
+  it('orders several pins among themselves by path', () => {
+    const r = rank([
+      f({ path: 'src/b.ts', content: 'x', pinned: true }),
+      f({ path: 'src/a.ts', content: 'x', pinned: true }),
+      f({ path: 'src/c.ts', content: 'x' }),
+    ])
+
+    expect(r.map((x) => x.path)).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts'])
+  })
+
+  it('cannot conjure content: a pinned binary still scores 0', () => {
+    const r = rank([
+      f({ path: 'assets/logo.png', lang: '', binary: true, content: '', pinned: true }),
+      f({ path: 'src/real.ts', content: 'const x = 1' }),
+    ])
+    const png = byPath(r, 'assets/logo.png')
+
+    expect(png.score).toBe(0)
+    expect(png.reasons).toEqual(['pinned', 'no text content'])
+  })
+})

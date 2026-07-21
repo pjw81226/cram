@@ -5,6 +5,8 @@
  *   - Recursively walk `root` (never following symlinked directories).
  *   - Apply a built-in default-ignore set, .gitignore files (root + nested),
  *     and any extra `opts.ignore` globs — all via the `ignore` package.
+ *   - Honor `opts.alwaysInclude` pins, which outrank every ignore rule and are
+ *     flagged on the records they match (see pins.ts).
  *   - Read text content (UTF-8), detect binary files, map extension → lang.
  *   - Leave `tokens` at 0; the tokenizer fills that in later.
  */
@@ -16,6 +18,7 @@ import ignore from 'ignore'
 import type { Ignore } from 'ignore'
 
 import type { FileRecord, ScanOptions } from './types'
+import { createPinMatcher, type PinMatcher } from './pins'
 
 const DEFAULT_MAX_FILE_BYTES = 512 * 1024
 /** Only the first slice of a file is inspected for NUL bytes. */
@@ -220,6 +223,7 @@ async function walk(
   layers: IgnoreLayer[],
   respectGitignore: boolean,
   maxFileBytes: number,
+  pins: PinMatcher,
   out: FileRecord[],
 ): Promise<void> {
   let entries: Dirent[]
@@ -265,12 +269,17 @@ async function walk(
     }
 
     if (isDir) {
-      if (isIgnored(childRel, localLayers)) continue // prune whole subtree
-      await walk(childAbs, childRel, localLayers, respectGitignore, maxFileBytes, out)
+      // Prune the whole subtree — unless a pin is anchored somewhere inside it.
+      if (isIgnored(childRel, localLayers) && !pins.mayContain(childRel)) continue
+      await walk(childAbs, childRel, localLayers, respectGitignore, maxFileBytes, pins, out)
     } else if (isFile) {
-      if (isIgnored(childRel, localLayers)) continue
+      const pinned = pins.matches(childRel)
+      if (!pinned && isIgnored(childRel, localLayers)) continue
       const record = await recordFile(childAbs, childRel, maxFileBytes)
-      if (record) out.push(record)
+      if (record) {
+        if (pinned) record.pinned = true
+        out.push(record)
+      }
     }
     // Other entry types (fifo, socket, block device) are skipped.
   }
@@ -293,8 +302,10 @@ export async function scan(opts: ScanOptions): Promise<FileRecord[]> {
     layers.push({ base: '', ig: ignore().add(opts.ignore) })
   }
 
+  const pins = createPinMatcher(opts.alwaysInclude)
+
   const out: FileRecord[] = []
-  await walk(root, '', layers, respectGitignore, maxFileBytes, out)
+  await walk(root, '', layers, respectGitignore, maxFileBytes, pins, out)
 
   out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
   return out

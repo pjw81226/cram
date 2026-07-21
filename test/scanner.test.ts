@@ -24,6 +24,9 @@ beforeAll(async () => {
 
   await fs.mkdir(path.join(nodeModulesDir, 'leftpad'), { recursive: true })
   await fs.writeFile(leftpadFile, 'module.exports = (s, n) => s.padStart(n)\n')
+  // A sibling of the pinned file, so pin tests can prove the rest of a pruned
+  // subtree stays pruned rather than passing by accident.
+  await fs.writeFile(path.join(nodeModulesDir, 'leftpad', 'package.json'), '{"name":"leftpad"}\n')
 })
 
 afterAll(async () => {
@@ -116,5 +119,67 @@ describe('scan (extra ignore globs)', () => {
     )
     expect(paths).not.toContain('README.md')
     expect(paths).toContain('src/index.ts')
+  })
+})
+
+describe('scan (alwaysInclude pins)', () => {
+  it('pins a gitignored file back in and flags the record', async () => {
+    const files = await scan({ root: sampleDir, alwaysInclude: ['secret.txt'] })
+    const secret = files.find((f) => f.path === 'secret.txt')
+
+    expect(secret).toBeDefined()
+    expect(secret!.pinned).toBe(true)
+    expect(secret!.content).toContain('API_KEY')
+  })
+
+  it('outranks an explicit ignore glob', async () => {
+    const paths = (
+      await scan({ root: sampleDir, ignore: ['*.md'], alwaysInclude: ['README.md'] })
+    ).map((f) => f.path)
+
+    expect(paths).toContain('README.md')
+  })
+
+  it('reaches into a default-ignored directory when the pin is anchored', async () => {
+    const files = await scan({
+      root: sampleDir,
+      alwaysInclude: ['node_modules/leftpad/index.js'],
+    })
+    const paths = files.map((f) => f.path)
+
+    expect(paths).toContain('node_modules/leftpad/index.js')
+    // Only the pin is rescued — the rest of the subtree stays pruned.
+    expect(paths.some((p) => p === 'node_modules/leftpad/package.json')).toBe(false)
+    expect(files.find((f) => f.path === 'node_modules/leftpad/index.js')!.pinned).toBe(true)
+  })
+
+  it('rescues a whole pruned subtree for an open anchored pin', async () => {
+    const paths = (await scan({ root: sampleDir, alwaysInclude: ['node_modules/**'] })).map(
+      (f) => f.path,
+    )
+    expect(paths).toContain('node_modules/leftpad/index.js')
+  })
+
+  it('will not walk a pruned directory for an unanchored pin', async () => {
+    // "index.js" matches at any depth in gitignore syntax; honoring that inside
+    // pruned directories would mean walking node_modules on every scan.
+    const paths = (await scan({ root: sampleDir, alwaysInclude: ['index.js'] })).map(
+      (f) => f.path,
+    )
+    expect(paths).not.toContain('node_modules/leftpad/index.js')
+  })
+
+  it('leaves unpinned files unflagged', async () => {
+    const files = await scan({ root: sampleDir, alwaysInclude: ['README.md'] })
+
+    expect(files.find((f) => f.path === 'README.md')!.pinned).toBe(true)
+    expect(files.find((f) => f.path === 'src/index.ts')!.pinned).toBeFalsy()
+  })
+
+  it('is a no-op when no pins are given', async () => {
+    const withEmpty = (await scan({ root: sampleDir, alwaysInclude: [] })).map((f) => f.path)
+    const without = (await scan({ root: sampleDir })).map((f) => f.path)
+
+    expect(withEmpty).toEqual(without)
   })
 })

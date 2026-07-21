@@ -16,6 +16,8 @@ export interface HeadlessOptions {
   ignore?: string[]
   includeDefaultIgnored?: boolean
   respectGitignore?: boolean
+  /** Pins that outrank every ignore rule and lead the selection. */
+  alwaysInclude?: string[]
 }
 
 export interface HeadlessResult {
@@ -45,6 +47,7 @@ export async function runHeadless(opts: HeadlessOptions): Promise<HeadlessResult
     ignore: opts.ignore,
     includeDefaultIgnored: opts.includeDefaultIgnored,
     respectGitignore: opts.respectGitignore,
+    alwaysInclude: opts.alwaysInclude,
   })
   tokenizeFiles(files, model.encoding)
 
