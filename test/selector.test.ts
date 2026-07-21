@@ -90,3 +90,48 @@ describe('select', () => {
     }
   })
 })
+
+describe('select (pins)', () => {
+  const pin = (path: string, score: number, tokens: number): RankedFile => ({
+    ...rf(path, score, tokens),
+    pinned: true,
+  })
+
+  it('takes the budget before higher-scoring unpinned files', () => {
+    const files = [rf('hi', 1, 500), pin('pinned', 0.01, 500)]
+    const sel = select(files, 500)
+
+    expect(sel.included.map((f) => f.path)).toEqual(['pinned'])
+  })
+
+  it('keeps a pin that a tight budget would otherwise drop', () => {
+    const files = [rf('a', 0.9, 400), rf('b', 0.8, 400), pin('pinned', 0.1, 100)]
+    const sel = select(files, 500)
+
+    expect(sel.included.map((f) => f.path)).toContain('pinned')
+    expect(sel.totalTokens).toBeLessThanOrEqual(500)
+  })
+
+  it('still never exceeds the budget: an oversized pin is skipped, not forced', () => {
+    const files = [pin('huge', 0.5, 5000), rf('small', 0.4, 100)]
+    const sel = select(files, 1000)
+
+    expect(sel.excluded.map((f) => f.path)).toContain('huge')
+    expect(sel.included.map((f) => f.path)).toEqual(['small'])
+    expect(sel.totalTokens).toBeLessThanOrEqual(1000)
+  })
+
+  it('fills the budget with pins first, in path order', () => {
+    const files = [rf('unpinned', 1, 100), pin('b', 0.1, 100), pin('a', 0.1, 100)]
+    const sel = select(files, 200)
+
+    expect(sel.included.map((f) => f.path)).toEqual(['a', 'b'])
+  })
+
+  it('does not rescue a pinned file with no text content', () => {
+    const files = [pin('logo.png', 0, 0), rf('real', 0.5, 10)]
+    const sel = select(files, 1000)
+
+    expect(sel.included.map((f) => f.path)).toEqual(['real'])
+  })
+})

@@ -35,6 +35,44 @@ describe('headless pipeline (integration)', () => {
     expect(res.budget).toBe(200000)
   })
 
+  it('keeps an alwaysInclude pin under a budget that fits almost nothing', async () => {
+    // 40 tokens fits one small file at most; without the pin, the ranker's
+    // favourites (README, package.json) win that space.
+    const res = await runHeadless({
+      root,
+      model: 'gpt-4o',
+      budget: 40,
+      format: 'markdown',
+      alwaysInclude: ['src/util.js'],
+    })
+
+    expect(res.output).toContain('src/util.js')
+    expect(res.totalTokens).toBeLessThanOrEqual(40)
+    expect(res.selection.included[0]!.reasons).toContain('pinned')
+  })
+
+  it('pins a file the default ignore rules would drop', async () => {
+    const plain = await runHeadless({ root, model: 'gpt-4o', budget: 200000, format: 'markdown' })
+    expect(plain.output).not.toContain('logo.png') // dropped by the default *.png rule
+
+    const res = await runHeadless({
+      root,
+      model: 'gpt-4o',
+      budget: 200000,
+      format: 'markdown',
+      alwaysInclude: ['logo.png'],
+    })
+    const png = [...res.selection.included, ...res.selection.excluded].find(
+      (f) => f.path === 'logo.png',
+    )
+
+    // The pin gets it past the ignore rules, but binary files have no content
+    // to pack, so it is scanned and flagged rather than bundled.
+    expect(png).toBeDefined()
+    expect(png!.pinned).toBe(true)
+    expect(res.selection.included.some((f) => f.path === 'logo.png')).toBe(false)
+  })
+
   it('exposes the selection so callers can explain it', async () => {
     const res = await runHeadless({ root, model: 'gpt-4o', budget: 5000, format: 'markdown' })
     const report = explainReport(res.selection)

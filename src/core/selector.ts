@@ -1,4 +1,5 @@
 import type { RankedFile, Selection } from './types'
+import { byImportance } from './ranker'
 
 /**
  * Choose the subset of ranked files that fits within `budget` tokens.
@@ -11,8 +12,12 @@ import type { RankedFile, Selection } from './types'
  *
  * Guarantees:
  *  - `totalTokens <= budget` for any finite `budget >= 0`
- *  - deterministic (stable sort by score desc, then path asc)
+ *  - deterministic (pins first, then score desc, then path asc)
  *  - files with no text content (`tokens <= 0`) are never included
+ *
+ * Pinned files are offered the budget before anything else, which is as far as
+ * a pin can go: the budget cap still wins, so a pin larger than the whole
+ * budget is skipped rather than blowing past it (`--explain` says so).
  */
 export function select(ranked: RankedFile[], budget: number): Selection {
   const cap = Number.isFinite(budget) ? Math.max(0, budget) : budget
@@ -36,9 +41,4 @@ export function select(ranked: RankedFile[], budget: number): Selection {
   }
 
   return { included, excluded, totalTokens, budget }
-}
-
-function byImportance(a: RankedFile, b: RankedFile): number {
-  if (b.score !== a.score) return b.score - a.score
-  return a.path < b.path ? -1 : a.path > b.path ? 1 : 0
 }

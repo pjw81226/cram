@@ -9,6 +9,9 @@ import type { FileRecord, RankedFile } from './types'
  * focus terms) into a raw score, then min-max normalizes that raw score across
  * the input set into [0, 1]. Anchors (README + primary manifest) get a high
  * floor so they are usually included; files with no text content score exactly 0.
+ *
+ * Pinned files (`alwaysInclude`) sit outside the model entirely: they score 1
+ * and sort ahead of everything else, so the selector reaches them first.
  */
 
 // ---- signal weights (contributions to the pre-normalization raw score) ----
@@ -142,8 +145,10 @@ export function rank(
 
   const scored: Scored[] = files.map((file) => {
     // Signal 6: no text content -> forced 0 later; short-circuit scoring now.
+    // A pin can't conjure content, so it only annotates the reason here.
     if (file.binary || file.content === '') {
-      return { file, raw: 0, reasons: ['no text content'], anchor: false, empty: true }
+      const reasons = file.pinned ? ['pinned', 'no text content'] : ['no text content']
+      return { file, raw: 0, reasons, anchor: false, empty: true }
     }
 
     const path = file.path
@@ -248,17 +253,31 @@ export function rank(
     if (s.empty) {
       return { ...s.file, score: 0, reasons: s.reasons }
     }
+    // A pin is a decision, not a signal: it wins outright.
+    if (s.file.pinned) {
+      return { ...s.file, score: NORM_HI, reasons: ['pinned', ...s.reasons] }
+    }
     const t = hasSpread ? (s.raw - rawMin) / (rawMax - rawMin) : 0.5
     let score = NORM_LO + (NORM_HI - NORM_LO) * t
     if (s.anchor) score = Math.max(score, ANCHOR_FLOOR)
     return { ...s.file, score: clamp01(score), reasons: s.reasons }
   })
 
-  // Sort by score desc, tie-break by path asc (deterministic ASCII comparison).
-  ranked.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score
-    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0
-  })
+  // Pins first, then score desc, tie-broken by path asc (deterministic ASCII).
+  // Pins lead even at equal scores, so a budget squeeze can never favour an
+  // unpinned file that happens to top out at 1.0 too.
+  ranked.sort(byImportance)
 
   return ranked
+}
+
+/**
+ * The order the pipeline packs files in: pins first, then score desc, then path
+ * asc. Shared by the ranker, the selector, and the TUI so all three agree on
+ * what "most important" means.
+ */
+export function byImportance(a: RankedFile, b: RankedFile): number {
+  if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
+  if (b.score !== a.score) return b.score - a.score
+  return a.path < b.path ? -1 : a.path > b.path ? 1 : 0
 }

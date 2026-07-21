@@ -31,6 +31,7 @@ That's it — no install, no config, no API key.
 - 🎯 **Budget auto‑fit** — `--budget 100k` (or a model preset) and cram greedily packs the highest‑value files until the budget is full. It never goes over.
 - 🧠 **Smart ranking** — cram keeps the files that matter. Source over tests, entry points over fixtures, recently‑touched over stale, README + manifest always anchored. Not just "biggest first."
 - 🔍 **Shows its work** — `--explain` prints why every file was kept or dropped, and the TUI shows the same reasons for the file under the cursor. No black box.
+- 📌 **Pin what matters** — an `alwaysInclude` list in a `.cramrc` keeps your architecture doc or API schema in every bundle, no matter how tight the budget.
 - 🔌 **Local & instant** — tokenization runs locally (OpenAI `o200k`/`cl100k`). No API key, no upload, works offline. One `npx` and you're in.
 - 📤 **Three formats** — Markdown, Claude‑optimized **XML**, or plain text — each with a file tree and token summary header.
 - 🧵 **Headless mode** — pipe it, write a file, or copy to clipboard. Perfect for scripts and CI.
@@ -97,6 +98,7 @@ cram [dir] [options]
 | `--focus <text>` | Bias ranking toward a task, e.g. `--focus "auth flow"`. |
 | `--explain` | Print why each file was kept or dropped. |
 | `--ignore <glob>` | Extra ignore glob (repeatable). |
+| `--include <glob>` | Always include matching files, whatever the budget (repeatable). |
 | `--all` | Include files normally ignored by default. |
 | `--no-gitignore` | Don't honor `.gitignore`. |
 | `-i, --interactive` | Force the TUI. |
@@ -124,8 +126,33 @@ When the whole repo won't fit, cram decides what to keep with a deterministic im
 - **Recency** — recently modified files (by git/mtime) get a boost.
 - **Shape** — shallower paths and real code beat deep, generated, or data files.
 - **Focus** — `--focus "…"` boosts files whose path/content match your task.
+- **Pins** — files matched by `alwaysInclude` skip the scoring entirely and go first.
 
 Then the selector fills your budget **first‑fit by importance**: it takes the most important files that fit and skips (without stopping at) any single file too large for the remaining room. The result is guaranteed to stay within budget.
+
+### Pinning must‑include files
+
+Some files belong in every bundle — the architecture doc, the API schema, the one config that explains the whole build. Drop a `.cramrc` at the repo root:
+
+```json
+{
+  "alwaysInclude": ["docs/ARCHITECTURE.md", "src/api/**", "dist/openapi.json"]
+}
+```
+
+Patterns use gitignore syntax. `.cramrc`, `.cramrc.json`, and `cram.json` all work (in that order), or pin one‑off files from the command line:
+
+```bash
+cram . --budget 20k --include "docs/ARCHITECTURE.md"
+```
+
+Pinned files:
+
+- **go first** — they take the budget before anything else, so a tight budget drops other files instead;
+- **beat every ignore rule** — including `.gitignore`, `--ignore`, and the built‑in defaults, so you can pin a generated `dist/openapi.json` that cram would normally skip;
+- **still respect the budget** — cram never goes over, so a pin bigger than the whole budget is skipped rather than blowing past it. `--explain` shows it as `over budget · pinned`.
+
+> To pin something inside a directory cram prunes by default (`dist/`, `build/`, `node_modules/`), anchor the pattern to it: `dist/openapi.json` or `dist/**`. A bare `*.json` matches at any depth, and cram won't walk pruned directories looking for it.
 
 ### Seeing why
 

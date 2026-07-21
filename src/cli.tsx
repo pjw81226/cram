@@ -8,6 +8,7 @@ import { App } from './tui/App'
 import { runHeadless } from './headless'
 import { resolveModel, DEFAULT_MODEL, MODELS } from './core/models'
 import { explainReport } from './core/explain'
+import { loadConfig } from './core/config'
 import { parseBudget, formatTokens, formatCost } from './util'
 import type { OutputFormat } from './core/types'
 
@@ -26,6 +27,7 @@ cli
   .option('--focus <text>', 'Bias ranking toward a task description')
   .option('--explain', 'Print why each file was kept or dropped')
   .option('--ignore <glob>', 'Extra ignore glob (repeatable)')
+  .option('--include <glob>', 'Always include matching files, whatever the budget (repeatable)')
   .option('--all', 'Include files normally ignored by default')
   .option('--no-gitignore', 'Do not honor .gitignore files')
   .option('-i, --interactive', 'Force the interactive TUI')
@@ -34,6 +36,7 @@ cli
   .example('  $ cram . -b 100k -o ctx.md   # auto-fit to 100k tokens, write a file')
   .example('  $ cram src --model claude -c # pack src/ for Claude, copy to clipboard')
   .example('  $ cram . -b 50k --explain    # show why each file was kept or dropped')
+  .example('  $ cram . --include "docs/**" # pin files cram must always keep')
   .action(async (dir: string | undefined, options: Record<string, unknown>) => {
     if (options.listModels) {
       listModels()
@@ -56,10 +59,16 @@ cli
       return fail(err instanceof Error ? err.message : String(err))
     }
 
+    // Pins come from the repo's config file and from --include; both apply.
+    const config = await loadConfig(root)
+    for (const warning of config.warnings) process.stderr.write(`cram: ${warning}\n`)
+    const alwaysInclude = [...config.alwaysInclude, ...(toArray(options.include) ?? [])]
+
     const scanOptions = {
       ignore: toArray(options.ignore),
       includeDefaultIgnored: Boolean(options.all),
       respectGitignore: options.gitignore !== false,
+      alwaysInclude,
     }
 
     const explain = Boolean(options.explain)
@@ -85,6 +94,13 @@ cli
     }
 
     const result = await runHeadless({ root, model: model.id, budget, format, focus: options.focus as string | undefined, ...scanOptions })
+
+    // A pin that matches nothing is almost always a typo; say so rather than
+    // leaving the user to wonder why their file never shows up.
+    const files = [...result.selection.included, ...result.selection.excluded]
+    if (alwaysInclude.length > 0 && !files.some((f) => f.pinned)) {
+      process.stderr.write(`cram: no files matched ${alwaysInclude.join(', ')}\n`)
+    }
 
     let wroteSomewhere = false
     if (options.output) {

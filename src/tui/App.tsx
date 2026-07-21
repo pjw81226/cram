@@ -5,7 +5,7 @@ import path from 'node:path'
 import clipboard from 'clipboardy'
 import { scan } from '../core/scanner'
 import { tokenizeFiles } from '../core/tokenizer'
-import { rank } from '../core/ranker'
+import { rank, byImportance } from '../core/ranker'
 import { select } from '../core/selector'
 import { format } from '../core/formatter'
 import { resolveModel, estimateCost, MODELS } from '../core/models'
@@ -32,11 +32,9 @@ export interface AppProps {
     ignore?: string[]
     includeDefaultIgnored?: boolean
     respectGitignore?: boolean
+    alwaysInclude?: string[]
   }
 }
-
-const byScore = (a: RankedFile, b: RankedFile): number =>
-  b.score - a.score || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
 
 export function App(props: AppProps) {
   const { exit } = useApp()
@@ -143,8 +141,8 @@ export function App(props: AppProps) {
 
   const buildSelection = (): Selection => {
     const s = live.current
-    const inc = s.files.filter((f) => s.included.has(f.path)).sort(byScore)
-    const exc = s.files.filter((f) => !s.included.has(f.path)).sort(byScore)
+    const inc = s.files.filter((f) => s.included.has(f.path)).sort(byImportance)
+    const exc = s.files.filter((f) => !s.included.has(f.path)).sort(byImportance)
     return {
       included: inc,
       excluded: exc,

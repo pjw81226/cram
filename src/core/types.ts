@@ -27,6 +27,8 @@ export interface FileRecord {
   lang: string
   /** True when detected as binary/non-text; content is omitted. */
   binary: boolean
+  /** True when an `alwaysInclude` pin matched this file; absent means unpinned. */
+  pinned?: boolean
 }
 
 /** A file with an importance score. Produced by the ranker. */
@@ -76,6 +78,8 @@ export interface ScanOptions {
   respectGitignore?: boolean
   /** Files larger than this (bytes) are recorded but their content is skipped. */
   maxFileBytes?: number
+  /** Gitignore-syntax pins that outrank every ignore rule (see pins.ts). */
+  alwaysInclude?: string[]
 }
 
 /** Resolved run configuration shared by the TUI and headless paths. */
@@ -126,6 +130,14 @@ export interface Config {
  *       selection: Selection,
  *       opts: { format: OutputFormat; root: string; model: ModelSpec }
  *     ): string
+ *
+ *   config.ts
+ *     export async function loadConfig(root: string): Promise<LoadedConfig>
+ *       - Reads .cramrc / cram.json at the scan root; never throws.
+ *
+ *   pins.ts
+ *     export function createPinMatcher(patterns?: readonly string[]): PinMatcher
+ *       - Matches `alwaysInclude` patterns; used by the scanner.
  *
  *   explain.ts
  *     export function reasonSummary(file: RankedFile): string   // TUI "why" line
